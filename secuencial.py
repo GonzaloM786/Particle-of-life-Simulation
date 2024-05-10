@@ -8,10 +8,10 @@ from particula import Particula
 tam_pantalla = 10
 tam_punto = 3
 n = 50 # numero de particulas
-r_max = 5
-beta = 0.3 # Corte con el eje x de la funcion de fuerza
-mu = 0.7 # Rozamiento
-dt = 0.05
+r_max = 7
+beta = 0.01 # Corte con el eje x de la funcion de fuerza
+mu = 0.9 # Rozamiento
+dt = 0.03
 force_factor = 1
 
 # Matriz de atraccion
@@ -33,14 +33,12 @@ fig, ax = plt.subplots()
 fig.subplots_adjust(left=0, bottom=0, right=1, top=1, wspace=None, hspace=None) 
 
 ax.axis('off') # Eliminar ejes
-ax.set_xlim(0, tam_pantalla)
-ax.set_ylim(0, tam_pantalla)
-
+mitad_tam_pantalla = tam_pantalla/2
+ax.set_xlim(-mitad_tam_pantalla, mitad_tam_pantalla)
+ax.set_ylim(-mitad_tam_pantalla, mitad_tam_pantalla)
 
 # Puntos
-particulas = [Particula(tam_pantalla) for _ in range(n)]
-
-
+particulas = [Particula(mitad_tam_pantalla) for _ in range(n)]
 
 # Función de inicialización (opcional)
 def init():
@@ -81,15 +79,27 @@ def actualizar_velocidad(n_particula):
     particula.velocidadY += totalForceY*dt
 
 def actualizar_posicion(n_particula):
-    particulas[n_particula].posicionX += particulas[n_particula].velocidadX * dt
-    particulas[n_particula].posicionY += particulas[n_particula].velocidadY * dt
+    particula = particulas[n_particula]
+    particula.posicionX += particula.velocidadX * dt
+    particula.posicionY += particula.velocidadY * dt
+    
+    if particula.posicionX < -mitad_tam_pantalla:
+        particula.posicionX += tam_pantalla 
+    elif particula.posicionX > mitad_tam_pantalla:
+        particula.posicionX -= tam_pantalla
+
+    if particula.posicionY < -mitad_tam_pantalla:
+        particula.posicionY += tam_pantalla 
+    elif particula.posicionY > mitad_tam_pantalla:
+        particula.posicionY -= tam_pantalla
+    
 
 # Función de actualización para animar el punto
 def update(frame):
     ax.clear()
     ax.axis('off')
-    ax.set_xlim(0, tam_pantalla)
-    ax.set_ylim(0, tam_pantalla)
+    ax.set_xlim(-mitad_tam_pantalla, mitad_tam_pantalla)
+    ax.set_ylim(-mitad_tam_pantalla, mitad_tam_pantalla)
     for n_particula in range(len(particulas)):
         actualizar_velocidad(n_particula)
         actualizar_posicion(n_particula)
@@ -104,7 +114,6 @@ point, = ax.plot([], [], marker='o', color='r')
 # Crear la animación
 ani = FuncAnimation(fig, update, frames=np.arange(100), init_func=init, blit=True, interval = 1/dt)
 #ani.save('animation.gif', writer='imagemagick')
-
 
 # Mostrar la animación
 plt.show()

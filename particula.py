@@ -4,8 +4,8 @@ class Particula:
 
     def __init__(self, tam_pantalla):
         self.color = random.choice(['r', 'lime', 'c', 'y'])
-        self.posicionX = random.uniform(0, tam_pantalla)
-        self.posicionY = random.uniform(0, tam_pantalla)
+        self.posicionX = random.uniform(-tam_pantalla, tam_pantalla)
+        self.posicionY = random.uniform(-tam_pantalla, tam_pantalla)
         self.velocidadX = 0
         self.velocidadY = 0
 
