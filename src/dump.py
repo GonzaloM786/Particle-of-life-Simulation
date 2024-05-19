@@ -112,7 +112,7 @@ def update(frame):
 #point, = ax.plot([], [], marker='o', color='r')
 
 # Crear la animación
-ani = FuncAnimation(fig, update, frames=np.arange(100), init_func=init, blit=True, interval = 1/dt)
+ani = FuncAnimation(fig, update, frames=np.arange(500), init_func=init, blit=True, interval = 1/dt)
 #ani.save('animation.gif', writer='imagemagick')
 
 # Mostrar la animación

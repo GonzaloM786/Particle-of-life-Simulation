@@ -31,12 +31,11 @@ class Secuencial:
         self.fig.subplots_adjust(left=0, bottom=0, right=1, top=1, wspace=None, hspace=None) 
 
         self.ax.axis('off') # Eliminar ejes
-        mitad_tam_pantalla = self.tam_pantalla/2
-        self.ax.set_xlim(-mitad_tam_pantalla, mitad_tam_pantalla)
-        self.ax.set_ylim(-mitad_tam_pantalla, mitad_tam_pantalla)
+        self.ax.set_xlim(-self.mitad_tam_pantalla, self.mitad_tam_pantalla)
+        self.ax.set_ylim(-self.mitad_tam_pantalla, self.mitad_tam_pantalla)
 
         # Crear la animación
-        ani = FuncAnimation(self.fig, self.update, frames=np.arange(100), init_func=self.init, blit=True, interval = 1/self.dt)
+        ani = FuncAnimation(self.fig, self.update, frames=np.arange(1000), init_func=self.init, blit=True, interval = 1/self.dt)
         if save:
             ani.save('animation.gif', writer='imagemagick')
 
