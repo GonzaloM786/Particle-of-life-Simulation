@@ -1,121 +1,141 @@
+import pycuda.driver as cuda
+import pycuda.autoinit
+from pycuda.compiler import SourceModule
 import numpy as np
-import pandas as pd
-import matplotlib.pyplot as plt
-from matplotlib.animation import FuncAnimation
-from particula import Particula
+from matriz_atraccion import Matriz_atraccion
 
-# Parametros
-tam_pantalla = 10
-tam_punto = 3
-n = 100 # numero de particulas
-r_max = 4
-beta = 0.01 # Corte con el eje x de la funcion de fuerza
-mu = 0.9 # Rozamiento
-dt = 0.03
-force_factor = 1
+# Código del kernel para actualizar velocidades
+kernel_code_velocity = """
+        __global__ void actualizar_velocidad_kernel(
+    float *posX, float *posY, float *velX, float *velY, int *colores, float *matriz_atraccion, 
+    int n, float r_max, float beta, float mu, float dt, float force_factor, float tam_pantalla, float mitad_tam_pantalla) 
+{
+    int idx = blockIdx.x * blockDim.x + threadIdx.x;
+    if (idx < n) {
+        float totalForceX = 0;
+        float totalForceY = 0;
+        float px = posX[idx];
+        float py = posY[idx];
+        int color_idx = colores[idx];
 
-# Matriz de atraccion
-def generar_matriz_aleatoria():
-    matriz = np.random.uniform(-1, 1, size=(4, 4))
-    matriz_simetrica = (matriz + matriz.T) / 2
-    filas_columnas = ['r', 'lime', 'c', 'y']
-    matriz_atraccion = pd.DataFrame(matriz_simetrica, index=filas_columnas, columns=filas_columnas)
-    return matriz_atraccion
+        for (int j = 0; j < n; ++j) {
+            if (idx == j) continue;
 
-matriz_atraccion = generar_matriz_aleatoria()
+            float dx = posX[j] - px;
+            float dy = posY[j] - py;
+            float r = sqrt(dx * dx + dy * dy);
 
+            if (r > 0.05 && r < r_max) {
+                int other_color_idx = colores[j];
+                float atraccion = matriz_atraccion[color_idx * 4 + other_color_idx];
+                
+                float f;
+                float r_normalized = r / r_max;
+                if (r_normalized < beta) {
+                    f = r_normalized / beta - 1;
+                } else if (beta < r_normalized && r_normalized < 1) {
+                    f = atraccion * (1 - abs(2 * r_normalized - 1 - beta) / (1 - beta));
+                } else {
+                    f = 0;
+                }
 
-# Pantalla
-plt.style.use('dark_background') # Fondo negro
-plt.rcParams['toolbar'] = 'None' # Ocultar barra de tareas
+                totalForceX += dx / r * f;
+                totalForceY += dy / r * f;
+            }
+        }
 
-fig, ax = plt.subplots()
-fig.subplots_adjust(left=0, bottom=0, right=1, top=1, wspace=None, hspace=None) 
+        totalForceX *= r_max * force_factor;
+        totalForceY *= r_max * force_factor;
 
-ax.axis('off') # Eliminar ejes
-mitad_tam_pantalla = tam_pantalla/2
-ax.set_xlim(-mitad_tam_pantalla, mitad_tam_pantalla)
-ax.set_ylim(-mitad_tam_pantalla, mitad_tam_pantalla)
+        velX[idx] = velX[idx] * mu + totalForceX * dt;
+        velY[idx] = velY[idx] * mu + totalForceY * dt;
 
-# Puntos
-particulas = [Particula(mitad_tam_pantalla) for _ in range(n)]
+        posX[idx] += velX[idx] * dt;
+        posY[idx] += velY[idx] * dt;
 
-# Función de inicialización (opcional)
-def init():
-    for particula in particulas:
-        ax.plot(particula.posicionX, particula.posicionY, marker='o', color=particula.color, markersize=tam_punto)
-    return []
+        if (posX[idx] < -mitad_tam_pantalla) posX[idx] += tam_pantalla;
+        else if (posX[idx] > mitad_tam_pantalla) posX[idx] -= tam_pantalla;
 
-def fuerza(r, a):
-    if r < beta:
-        return r/beta - 1
-    elif beta < r and r < 1:
-        return a*(1-(abs(2*r -1 -beta))/(1-beta))
-    else:
-        return 0
+        if (posY[idx] < -mitad_tam_pantalla) posY[idx] += tam_pantalla;
+        else if (posY[idx] > mitad_tam_pantalla) posY[idx] -= tam_pantalla;
+    }
+}
 
-def actualizar_velocidad(n_particula):
-    totalForceX = 0
-    totalForceY = 0
-    particula = particulas[n_particula]
+        """
 
-    for j in range(len(particulas)):
-        if n_particula == j: continue
-        rX, rY, r = particula.distancia(particulas[j])
-        if r > 0.05 and r < r_max:
-            atraccion = matriz_atraccion.at[particula.color, particulas[j].color]
-            #fuerza = atraccion/r
-            f = fuerza(r/r_max, atraccion)
-            totalForceX += rX / r * f
-            totalForceY += rY / r * f
-    
-    totalForceX *= r_max*force_factor
-    totalForceY *= r_max*force_factor
+# Kernel de Actualización de Posición:
+kernel_code_position = """
+__global__ void actualizar_posicion_kernel(float* posX, float* posY, float* velX, float* velY, int num_particulas, float dt, float tam_pantalla, float mitad_tam_pantalla) {
+    int idx = blockIdx.x * blockDim.x + threadIdx.x;
 
-    particula.velocidadX *= mu
-    particula.velocidadY *= mu
+    if (idx < num_particulas) {
+        posX[idx] += velX[idx] * dt;
+        posY[idx] += velY[idx] * dt;
 
-    particula.velocidadX += totalForceX*dt
-    particula.velocidadY += totalForceY*dt
+        if (posX[idx] < -mitad_tam_pantalla)
+            posX[idx] += tam_pantalla;
+        else if (posX[idx] > mitad_tam_pantalla)
+            posX[idx] -= tam_pantalla;
 
-def actualizar_posicion(n_particula):
-    particula = particulas[n_particula]
-    particula.posicionX += particula.velocidadX * dt
-    particula.posicionY += particula.velocidadY * dt
-    
-    if particula.posicionX < -mitad_tam_pantalla:
-        particula.posicionX += tam_pantalla 
-    elif particula.posicionX > mitad_tam_pantalla:
-        particula.posicionX -= tam_pantalla
+        if (posY[idx] < -mitad_tam_pantalla)
+            posY[idx] += tam_pantalla;
+        else if (posY[idx] > mitad_tam_pantalla)
+            posY[idx] -= tam_pantalla;
+    }
+}
+"""
 
-    if particula.posicionY < -mitad_tam_pantalla:
-        particula.posicionY += tam_pantalla 
-    elif particula.posicionY > mitad_tam_pantalla:
-        particula.posicionY -= tam_pantalla
-    
+# Compilar los kernels
+mod_velocity = SourceModule(kernel_code_velocity)
+mod_position = SourceModule(kernel_code_position)
 
-# Función de actualización para animar el punto
-def update(frame):
-    ax.clear()
-    ax.axis('off')
-    ax.set_xlim(-mitad_tam_pantalla, mitad_tam_pantalla)
-    ax.set_ylim(-mitad_tam_pantalla, mitad_tam_pantalla)
-    for n_particula in range(len(particulas)):
-        actualizar_velocidad(n_particula)
-        actualizar_posicion(n_particula)
-        ax.plot(particulas[n_particula].posicionX, particulas[n_particula].posicionY, marker='o', color=particulas[n_particula].color, markersize=tam_punto)
+# Obtener las funciones del kernel compilado
+func_velocity = mod_velocity.get_function("actualizar_velocidad_kernel")
+func_position = mod_position.get_function("actualizar_posicion_kernel")
 
-    return []
+# Definir los parámetros del kernel
+num_particulas = 1000  # Número de partículas
+dt = 0.01  # Delta de tiempo
+tam_pantalla = 100.0  # Tamaño de la pantalla
+mitad_tam_pantalla = tam_pantalla / 2  # Mitad del tamaño de la pantalla
+r_max = 10.0  # Radio máximo de interacción
+mu = 0.9  # Coeficiente de fricción
+force_factor = 1.0  # Factor de fuerza
+beta = 0.1  # Parámetro beta
 
+# Crear los arreglos de numpy para las posiciones, velocidades y colores
+posicionesX = np.random.rand(num_particulas).astype(np.float32)
+posicionesY = np.random.rand(num_particulas).astype(np.float32)
+velocidadesX = np.random.rand(num_particulas).astype(np.float32)
+velocidadesY = np.random.rand(num_particulas).astype(np.float32)
+colores = np.random.randint(0, 3, size=num_particulas).astype(np.float32)
+matriz_atraccion = Matriz_atraccion().matriz_atraccion
+matriz_atraccion = matriz_atraccion.values.flatten().astype(np.float32)
 
-# Crear el punto inicialmente vacío
-#point, = ax.plot([], [], marker='o', color='r')
+#matriz_atraccion = np.random.rand(3, 3).astype(np.float32).flatten()
 
-# Crear la animación
-ani = FuncAnimation(fig, update, frames=np.arange(500), init_func=init, blit=True, interval = 1/dt)
-#ani.save('animation.gif', writer='imagemagick')
+# Definir los argumentos del kernel
+args_velocity = [cuda.InOut(posicionesX), cuda.InOut(posicionesY),
+                cuda.InOut(velocidadesX), cuda.InOut(velocidadesY),
+                cuda.In(colores), cuda.In(matriz_atraccion),
+                np.int32(num_particulas), np.float32(r_max), 
+                np.float32(beta), np.float32(mu), np.float32(dt),
+                np.float32(force_factor), np.float32(tam_pantalla), 
+                np.float32(mitad_tam_pantalla)]
+args_position = [cuda.InOut(posicionesX), cuda.InOut(posicionesY), cuda.In(velocidadesX), cuda.In(velocidadesY), np.int32(num_particulas), np.float32(dt), np.float32(tam_pantalla), np.float32(mitad_tam_pantalla)]
 
-# Mostrar la animación
-plt.show()
+# Configurar la cantidad de bloques y hilos por bloque
+block_size = 1024  # Máximo de hilos por bloque
+grid_size = (num_particulas + block_size - 1) // block_size  # Calcula la cantidad de bloques necesarios
 
+# Ejecutar el kernel de actualización de velocidades
+func_velocity(*args_velocity, block=(block_size, 1, 1), grid=(grid_size, 1))
 
+# Ejecutar el kernel de actualización de posiciones
+func_position(*args_position, block=(block_size, 1, 1), grid=(grid_size, 1))
+
+# Imprimir las nuevas posiciones y velocidades
+print("Nuevas posiciones X:", posicionesX)
+print("Nuevas posiciones Y:", posicionesY)
+print("Nuevas velocidades X:", velocidadesX)
+print("Nuevas velocidades Y:", velocidadesY)

@@ -7,7 +7,7 @@ from particula import Particula
 class Secuencial:
     
     # Constructor
-    def __init__(self, matriz_atraccion, particulas, tam_pantalla = 10, tam_punto = 3, n = 100, r_max = 4, 
+    def __init__(self, matriz_atraccion, particulas, tam_pantalla = 10, tam_punto = 3, r_max = 4, 
                  beta = 0.01, mu = 0.9, dt = 0.03, force_factor = 1):
         # Parametros
         self.matriz_atraccion = matriz_atraccion
@@ -15,7 +15,6 @@ class Secuencial:
         self.tam_pantalla = tam_pantalla 
         self.mitad_tam_pantalla = tam_pantalla/2
         self.tam_punto = tam_punto
-        self.n = n # numero de particulas
         self.r_max = r_max
         self.beta = beta # Corte con el eje x de la funcion de fuerza
         self.mu = mu # Rozamiento

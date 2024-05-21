@@ -27,3 +27,18 @@ cuda.memcpy_dtoh(a_doubled, a_gpu)
 
 print(a)
 print(a_doubled)
+
+
+
+# Inicializar PyCUDA
+cuda.init()
+
+# Seleccionar el dispositivo (GPU)
+device = cuda.Device(0)
+
+# Obtener las propiedades del dispositivo
+props = device.get_attributes()
+
+# Imprimir la cantidad máxima de hilos por bloque y la cantidad máxima de bloques en una dimensión
+print("Máximo de hilos por bloque:", props.get(cuda.device_attribute.MAX_THREADS_PER_BLOCK))
+print("Máximo de bloques en una dimensión:", props.get(cuda.device_attribute.MAX_GRID_DIM_X))

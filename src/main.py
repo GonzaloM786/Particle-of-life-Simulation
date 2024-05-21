@@ -23,7 +23,7 @@ def generar_datos_secuencial():
     for n_part in range(100, 1001, 100):
         particulas = [Particula() for _ in range(n_part)]
         anim_secuencial = Secuencial(matriz_atraccion=matriz, particulas=particulas,
-                                    n = 100, r_max = 7, beta = 0.01, mu = 0.9, force_factor = 1)
+                                     r_max = 7, beta = 0.01, mu = 0.9, force_factor = 1)
         start = time.time()
         for i in range(50):
             for j in range(len(particulas)):
