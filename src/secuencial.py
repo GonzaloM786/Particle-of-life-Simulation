@@ -49,11 +49,10 @@ class Secuencial:
 
     def fuerza(self, r, a):
         if r < self.beta:
-            return r/self.beta - 1
-        elif self.beta < r and r < 1:
-            return a*(1-(abs(2*r -1 - self.beta))/(1-self.beta))
+            return (r/self.beta) - 1
         else:
-            return 0
+            return a*(1-(abs(2*r -1 - self.beta))/(1-self.beta))
+
 
     def actualizar_velocidad(self, n_particula):
         totalForceX = 0
@@ -63,7 +62,7 @@ class Secuencial:
         for j in range(len(self.particulas)):
             if n_particula == j: continue
             rX, rY, r = particula.distancia(self.particulas[j])
-            if r > 0.05 and r < self.r_max:
+            if r < self.r_max:
                 atraccion = self.matriz_atraccion.at[particula.color, self.particulas[j].color]
                 #fuerza = atraccion/r
                 f = self.fuerza(r/self.r_max, atraccion)
