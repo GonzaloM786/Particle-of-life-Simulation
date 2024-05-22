@@ -8,7 +8,7 @@ import pandas as pd
 from paralelo import Paralelo
 
 matriz = Matriz_atraccion().matriz_atraccion
-particulas = [Particula() for _ in range(500)]
+particulas = [Particula() for _ in range(100)]
 
 '''
 anim_secuencial = Secuencial(matriz_atraccion=matriz, particulas=particulas,

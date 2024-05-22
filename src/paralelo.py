@@ -137,16 +137,39 @@ class Paralelo:
         velocidadesX = np.array([p.velocidadX for p in self.particulas])
         velocidadesY = np.array([p.velocidadY for p in self.particulas])
 
-        args_position = [cuda.InOut(posicionesX), cuda.InOut(posicionesY),
-                            cuda.In(velocidadesX), cuda.In(velocidadesY),
+        # Reservar memoria en el dispositivo (GPU)
+        posX_gpu = cuda.mem_alloc(posicionesX.nbytes)
+        posY_gpu = cuda.mem_alloc(posicionesY.nbytes)
+        velX_gpu = cuda.mem_alloc(velocidadesX.nbytes)
+        velY_gpu = cuda.mem_alloc(velocidadesY.nbytes)
+
+        # Copiar datos del host a la GPU
+        cuda.memcpy_htod(posX_gpu, posicionesX)
+        cuda.memcpy_htod(posY_gpu, posicionesY)
+        cuda.memcpy_htod(velX_gpu, velocidadesX)
+        cuda.memcpy_htod(velY_gpu, velocidadesY)
+
+        args_position = [posX_gpu, posY_gpu, velX_gpu, velY_gpu,
                             np.int32(len(self.particulas)), np.float32(self.dt),
                             np.float32(self.tam_pantalla), np.float32(self.mitad_tam_pantalla)]
         
         self.kernel_posicion(*args_position, block=(self.block_size, 1, 1), grid=(self.grid_size, 1))
 
+        cuda.memcpy_dtoh(posicionesX, posX_gpu)
+        cuda.memcpy_dtoh(posicionesY, posY_gpu)
+        cuda.memcpy_dtoh(velocidadesX, velX_gpu)
+        cuda.memcpy_dtoh(velocidadesY, velY_gpu)
+
+        posX_gpu.free()
+        posY_gpu.free()
+        velX_gpu.free()
+        velY_gpu.free()
+
         for i, p in enumerate(self.particulas):
             p.posicionX = posicionesX[i]
             p.posicionY = posicionesY[i]
+        
+        
 
     def actualizar_velocidad(self):
         posicionesX = np.array([p.posicionX for p in self.particulas])
@@ -154,14 +177,39 @@ class Paralelo:
         velocidadesX = np.array([p.velocidadX for p in self.particulas])
         velocidadesY = np.array([p.velocidadY for p in self.particulas])
 
-        args_velocity = [cuda.In(posicionesX), cuda.In(posicionesY),
-                         cuda.InOut(velocidadesX), cuda.InOut(velocidadesY),
-                         cuda.In(self.colores), cuda.In(self.matriz_atraccion),
+         # Reservar memoria en el dispositivo (GPU)
+        posX_gpu = cuda.mem_alloc(posicionesX.nbytes)
+        posY_gpu = cuda.mem_alloc(posicionesY.nbytes)
+        velX_gpu = cuda.mem_alloc(velocidadesX.nbytes)
+        velY_gpu = cuda.mem_alloc(velocidadesY.nbytes)
+        colores_gpu = cuda.mem_alloc(self.colores.nbytes)
+        matriz_atraccion_gpu = cuda.mem_alloc(self.matriz_atraccion.nbytes)
+
+        # Copiar datos del host a la GPU
+        cuda.memcpy_htod(posX_gpu, posicionesX)
+        cuda.memcpy_htod(posY_gpu, posicionesY)
+        cuda.memcpy_htod(velX_gpu, velocidadesX)
+        cuda.memcpy_htod(velY_gpu, velocidadesY)
+        cuda.memcpy_htod(colores_gpu, self.colores)
+        cuda.memcpy_htod(matriz_atraccion_gpu, self.matriz_atraccion)
+
+        args_velocity = [posX_gpu, posY_gpu, velX_gpu, velY_gpu, colores_gpu, matriz_atraccion_gpu,
                          np.int32(len(self.particulas)), np.float32(self.r_max),
                          np.float32(self.beta), np.float32(self.mu),
                              np.float32(self.dt), np.float32(self.force_factor)]
 
         self.kernel_velocidad(*args_velocity, block=(self.block_size, 1, 1), grid=(self.grid_size, 1))
+
+        cuda.memcpy_dtoh(velocidadesX, velX_gpu)
+        cuda.memcpy_dtoh(velocidadesY, velY_gpu)
+
+        # Liberar memoria en la GPU
+        posX_gpu.free()
+        posY_gpu.free()
+        velX_gpu.free()
+        velY_gpu.free()
+        colores_gpu.free()
+        matriz_atraccion_gpu.free()
 
         for i, v in enumerate(self.particulas):
             v.velocidadX = velocidadesX[i]
