@@ -24,7 +24,7 @@ class Secuencial:
         # Pantalla
         plt.style.use('dark_background') # Fondo negro
         plt.rcParams['toolbar'] = 'None' # Ocultar barra de tareas
-        self.fig, self.ax = fig, ax = plt.subplots()
+        self.fig, self.ax = plt.subplots()
 
     def visualizar(self, save = False):
         self.fig.subplots_adjust(left=0, bottom=0, right=1, top=1, wspace=None, hspace=None) 
