@@ -5,10 +5,9 @@ from matplotlib.animation import FuncAnimation
 from particula import Particula
 
 class Secuencial:
-    
-    # Constructor
+
     def __init__(self, matriz_atraccion, particulas, tam_pantalla = 10, tam_punto = 3, r_max = 4, 
-                 beta = 0.01, mu = 0.9, dt = 0.03, force_factor = 1):
+                 beta = 0.01, mu = 0.9, dt = 0.03, force_factor = 1, generar_figura = True):
         # Parametros
         self.matriz_atraccion = matriz_atraccion
         self.particulas = particulas
@@ -21,10 +20,10 @@ class Secuencial:
         self.dt = dt # Intervalo de tiempo
         self.force_factor = force_factor # Factor de fuerza
 
-        # Pantalla
-        plt.style.use('dark_background') # Fondo negro
-        plt.rcParams['toolbar'] = 'None' # Ocultar barra de tareas
-        self.fig, self.ax = plt.subplots()
+        if generar_figura:
+            plt.style.use('dark_background') # Fondo negro
+            plt.rcParams['toolbar'] = 'None' # Ocultar barra de tareas
+            self.fig, self.ax = plt.subplots()
 
     def visualizar(self, save = False):
         self.fig.subplots_adjust(left=0, bottom=0, right=1, top=1, wspace=None, hspace=None) 
@@ -55,34 +54,42 @@ class Secuencial:
 
 
     def actualizar_velocidad(self, n_particula):
+        # Inicializar fuerzas
         totalForceX = 0
         totalForceY = 0
+        # Obtener partícula
         particula = self.particulas[n_particula]
 
+        # Computar la fuerza con el resto de partículas
         for j in range(len(self.particulas)):
             if n_particula == j: continue
             rX, rY, r = particula.distancia(self.particulas[j])
             if r < self.r_max:
                 atraccion = self.matriz_atraccion.at[particula.color, self.particulas[j].color]
-                #fuerza = atraccion/r
                 f = self.fuerza(r/self.r_max, atraccion)
                 totalForceX += rX / r * f
                 totalForceY += rY / r * f
         
+        # Ponderar fuerza
         totalForceX *= self.r_max*self.force_factor
         totalForceY *= self.r_max*self.force_factor
 
+        # Rozamiento
         particula.velocidadX *= self.mu
         particula.velocidadY *= self.mu
 
+        # Actualizar velociada
         particula.velocidadX += totalForceX*self.dt
         particula.velocidadY += totalForceY*self.dt
 
     def actualizar_posicion(self, n_particula):
+        # Obtener partícula
         particula = self.particulas[n_particula]
+        # Actualizar posición
         particula.posicionX += particula.velocidadX * self.dt
         particula.posicionY += particula.velocidadY * self.dt
         
+        # Hacer que la partícula no se salga de la pantalla
         if particula.posicionX < -self.mitad_tam_pantalla:
             particula.posicionX += self.tam_pantalla 
         elif particula.posicionX > self.mitad_tam_pantalla:

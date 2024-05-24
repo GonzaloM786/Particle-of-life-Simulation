@@ -6,8 +6,9 @@ import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
 
 class Paralelo:
+    
     def __init__(self, matriz_atraccion, particulas, tam_pantalla = 10, tam_punto = 3, r_max = 4, 
-                 beta = 0.01, mu = 0.9, dt = 0.03, force_factor = 1):
+                 beta = 0.01, mu = 0.9, dt = 0.03, force_factor = 1, generar_figura = True):
          # Parametros
         self.matriz_atraccion = matriz_atraccion.values.flatten().astype(np.float32)
         self.particulas = particulas
@@ -31,10 +32,10 @@ class Paralelo:
         self.velocidadesY = np.array([p.velocidadY for p in self.particulas])
         self.colores = np.array([self.color_to_index(p.color) for p in self.particulas], dtype=np.int32)
 
-        # Pantalla
-        plt.style.use('dark_background') # Fondo negro
-        plt.rcParams['toolbar'] = 'None' # Ocultar barra de tareas
-        self.fig, self.ax = plt.subplots()
+        if generar_figura:
+            plt.style.use('dark_background') # Fondo negro
+            plt.rcParams['toolbar'] = 'None' # Ocultar barra de tareas
+            self.fig, self.ax = plt.subplots()
 
     def color_to_index(self, color):
         color_dict = {'r': 0, 'lime': 1, 'c': 2, 'y': 3}
@@ -149,28 +150,22 @@ class Paralelo:
         cuda.memcpy_htod(velX_gpu, self.velocidadesX)
         cuda.memcpy_htod(velY_gpu, self.velocidadesY)
 
+        # Ejecutar kernel
         args_position = [posX_gpu, posY_gpu, velX_gpu, velY_gpu,
                             np.int32(len(self.particulas)), np.float32(self.dt),
                             np.float32(self.tam_pantalla), np.float32(self.mitad_tam_pantalla)]
         
         self.kernel_posicion(*args_position, block=(self.block_size, 1, 1), grid=(self.grid_size, 1))
 
+        # Copiar datos de la GPU al host
         cuda.memcpy_dtoh(self.posicionesX, posX_gpu)
         cuda.memcpy_dtoh(self.posicionesY, posY_gpu)
-        cuda.memcpy_dtoh(self.velocidadesX, velX_gpu)
-        cuda.memcpy_dtoh(self.velocidadesY, velY_gpu)
 
+        # Liberar memoria
         posX_gpu.free()
         posY_gpu.free()
         velX_gpu.free()
-        velY_gpu.free()
-
-        '''
-        for i, p in enumerate(self.particulas):
-            p.posicionX = posicionesX[i]
-            p.posicionY = posicionesY[i]
-        '''
-        
+        velY_gpu.free()        
 
     def actualizar_velocidad(self):
 
@@ -197,6 +192,7 @@ class Paralelo:
 
         self.kernel_velocidad(*args_velocity, block=(self.block_size, 1, 1), grid=(self.grid_size, 1))
 
+        # Copiar datos de la GPU al host
         cuda.memcpy_dtoh(self.velocidadesX, velX_gpu)
         cuda.memcpy_dtoh(self.velocidadesY, velY_gpu)
 
@@ -207,12 +203,6 @@ class Paralelo:
         velY_gpu.free()
         colores_gpu.free()
         matriz_atraccion_gpu.free()
-
-        '''
-        for i, v in enumerate(self.particulas):
-            v.velocidadX = velocidadesX[i]
-            v.velocidadY = velocidadesY[i]
-        '''
 
     def update(self, frame):
         self.ax.clear()

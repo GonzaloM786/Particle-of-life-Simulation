@@ -28,8 +28,6 @@ cuda.memcpy_dtoh(a_doubled, a_gpu)
 print(a)
 print(a_doubled)
 
-
-
 # Inicializar PyCUDA
 cuda.init()
 

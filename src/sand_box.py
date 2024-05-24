@@ -97,12 +97,10 @@ beta = 0.01 # Corte con el eje x de la funcion de fuerza
 mu = 0.9 # Rozamiento
 dt = 0.03 # Intervalo de tiempo
 force_factor = 1 # Factor de fuerza
-#kernel_velocidad = kernel_velocidad()
-#kernel_posicion = kernel_posicion()
 block_size = 1024  # Máximo de hilos por bloque
 grid_size = (len(particulas) + block_size - 1) // block_size
 
-#max_threads_per_block = 1024  # Example value, check your GPU's documentation
+#max_threads_per_block = 1024 
 #block_size = min(max_threads_per_block, len(particulas))
 #grid_size = (len(particulas) + block_size - 1) // block_size
 
