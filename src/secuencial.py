@@ -33,9 +33,9 @@ class Secuencial:
         self.ax.set_ylim(-self.mitad_tam_pantalla, self.mitad_tam_pantalla)
 
         # Crear la animación
-        ani = FuncAnimation(self.fig, self.update, frames=np.arange(1000), init_func=self.init, blit=True, interval = 1/self.dt)
+        ani = FuncAnimation(self.fig, self.update, frames=np.arange(400), init_func=self.init, blit=True, interval = 1/self.dt, repeat = not save)
         if save:
-            ani.save('animation.gif', writer='imagemagick')
+            ani.save('animation3.gif', writer='imagemagick')
 
         # Mostrar la animación
         plt.show()
